@@ -1,0 +1,29 @@
+{
+  "name": "margarita-hub-crm",
+  "version": "1.0.0",
+  "description": "MARGARITA HUB CRM - All-in-One CRM, Marketing & 24/7 Multi-Channel AI Suite",
+  "scripts": {
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev:server\" \"npm run dev:client\"",
+    "build:client": "npm --prefix client run build",
+    "build:server": "npm --prefix server run build",
+    "build": "npm run build:client && npm run build:server",
+    "start": "node server/dist/index.js"
+  },
+  "keywords": [
+    "crm",
+    "marketing",
+    "funnels",
+    "ai-agents",
+    "whatsapp",
+    "instagram",
+    "automation",
+    "margarita-hub"
+  ],
+  "author": "Margarita Hub CRM",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
