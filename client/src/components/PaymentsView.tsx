@@ -78,26 +78,35 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ transactions }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800 text-gray-200">
-              {transactions.map(tx => (
-                <tr key={tx.id} className="hover:bg-gray-800/40 transition">
-                  <td className="py-3.5 px-4 font-mono font-bold text-indigo-400">{tx.invoiceNumber}</td>
-                  <td className="py-3.5 px-4 font-semibold text-white">{tx.contactName}</td>
-                  <td className="py-3.5 px-4 text-gray-400">{tx.items?.[0]?.description || 'Venta'}</td>
-                  <td className="py-3.5 px-4 font-bold text-emerald-400">${tx.amount} {tx.currency}</td>
-                  <td className="py-3.5 px-4 uppercase font-mono text-[11px] text-gray-400">{tx.gateway}</td>
-                  <td className="py-3.5 px-4">
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
-                      {tx.status === 'paid' ? 'Pagado' : tx.status}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-gray-400">{tx.date}</td>
-                  <td className="py-3.5 px-4 text-right">
-                    <button className="p-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white" title="Descargar PDF">
-                      <Download className="w-3.5 h-3.5" />
-                    </button>
+              {transactions.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-xs text-gray-500">
+                    <Receipt className="w-8 h-8 text-gray-600 mx-auto mb-2 opacity-50" />
+                    No hay transacciones ni facturas registradas todavía. Conecta Stripe o registra un cobro.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                transactions.map(tx => (
+                  <tr key={tx.id} className="hover:bg-gray-800/40 transition">
+                    <td className="py-3.5 px-4 font-mono font-bold text-indigo-400">{tx.invoiceNumber}</td>
+                    <td className="py-3.5 px-4 font-semibold text-white">{tx.contactName}</td>
+                    <td className="py-3.5 px-4 text-gray-400">{tx.items?.[0]?.description || 'Venta'}</td>
+                    <td className="py-3.5 px-4 font-bold text-emerald-400">${tx.amount} {tx.currency}</td>
+                    <td className="py-3.5 px-4 uppercase font-mono text-[11px] text-gray-400">{tx.gateway}</td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
+                        {tx.status === 'paid' ? 'Pagado' : tx.status}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-gray-400">{tx.date}</td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button className="p-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white" title="Descargar PDF">
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

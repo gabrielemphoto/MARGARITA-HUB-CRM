@@ -12,7 +12,10 @@ import {
   Search,
   Filter,
   RefreshCw,
-  Phone
+  Phone,
+  Plus,
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { InstagramIcon as Instagram, FacebookIcon as Facebook } from './CustomIcons';
 import { Conversation, ConversationMessage, Contact } from '../types';
@@ -40,6 +43,14 @@ export const SocialInboxView: React.FC<SocialInboxViewProps> = ({
   const [channelFilter, setChannelFilter] = useState('all');
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [draftingAI, setDraftingAI] = useState(false);
+
+  // New Chat Modal State
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [newChatName, setNewChatName] = useState('');
+  const [newChatChannel, setNewChatChannel] = useState<'whatsapp' | 'instagram' | 'email'>('whatsapp');
+  const [newChatPhoneOrId, setNewChatPhoneOrId] = useState('+58 412 359 0065');
+  const [newChatInitialText, setNewChatInitialText] = useState('¡Hola! Te contactamos desde MARGARITA HUB CRM.');
+  const [creatingChat, setCreatingChat] = useState(false);
 
   // Set initial selected conversation
   useEffect(() => {
@@ -126,6 +137,31 @@ export const SocialInboxView: React.FC<SocialInboxViewProps> = ({
     }
   };
 
+  const handleStartNewChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChatName.trim() || !newChatPhoneOrId.trim()) return;
+    setCreatingChat(true);
+    try {
+      const res = await api.startRealConversation({
+        contactName: newChatName.trim(),
+        phoneOrIdentifier: newChatPhoneOrId.trim(),
+        channel: newChatChannel,
+        initialMessage: newChatInitialText.trim()
+      });
+      setIsNewChatOpen(false);
+      setNewChatName('');
+      if (res?.conversation?.id) {
+        setSelectedConvId(res.conversation.id);
+      }
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+      alert('Error al iniciar conversación');
+    } finally {
+      setCreatingChat(false);
+    }
+  };
+
   const filteredConversations = conversations.filter(c => {
     if (channelFilter === 'all') return true;
     return c.channel === channelFilter;
@@ -163,13 +199,23 @@ export const SocialInboxView: React.FC<SocialInboxViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenSimulator}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold shadow-sm transition"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Simular Mensaje Entrante</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsNewChatOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/30 transition"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Nuevo Chat / Mensaje</span>
+          </button>
+
+          <button
+            onClick={onOpenSimulator}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold shadow-sm transition"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Simular Mensaje</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Inbox Interface */}
@@ -202,8 +248,16 @@ export const SocialInboxView: React.FC<SocialInboxViewProps> = ({
           {/* Conversations Scroll */}
           <div className="flex-1 overflow-y-auto divide-y divide-gray-800/50">
             {filteredConversations.length === 0 ? (
-              <div className="p-8 text-center text-xs text-gray-500">
-                No hay conversaciones activas en este canal.
+              <div className="p-8 text-center text-xs text-gray-500 space-y-3">
+                <MessageSquare className="w-8 h-8 text-indigo-400/30 mx-auto" />
+                <p>No hay conversaciones activas en este canal.</p>
+                <button
+                  type="button"
+                  onClick={() => setIsNewChatOpen(true)}
+                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-semibold"
+                >
+                  + Iniciar Nueva Conversación
+                </button>
               </div>
             ) : (
               filteredConversations.map(conv => {
@@ -289,21 +343,49 @@ export const SocialInboxView: React.FC<SocialInboxViewProps> = ({
                   </div>
                 </div>
 
-                {/* AI Autopilot Switch Button */}
-                <button
-                  onClick={handleToggleAutopilot}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
-                    activeConversation.aiAutoPilot
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
-                      : 'bg-gray-800/80 border-gray-700 text-gray-400 hover:text-white'
-                  }`}
-                  title="Activar o pausar respuesta autónoma de la IA 24/7 en esta conversación"
-                >
-                  <Bot className={`w-4 h-4 ${activeConversation.aiAutoPilot ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`} />
-                  <span>
-                    IA 24/7 Autopilot: <strong className={activeConversation.aiAutoPilot ? 'text-emerald-400' : 'text-gray-400'}>{activeConversation.aiAutoPilot ? 'ON' : 'OFF'}</strong>
-                  </span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {activeConversation.channel === 'whatsapp' && (
+                    <a
+                      href={`https://wa.me/${activeConversation.channelIdentifier.replace(/\D/g, '') || '584123590065'}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition"
+                      title="Abrir conversación directamente en WhatsApp Web o en tu celular"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Abrir en WhatsApp</span>
+                    </a>
+                  )}
+
+                  {activeConversation.channel === 'instagram' && (
+                    <a
+                      href={`https://instagram.com/${activeConversation.channelIdentifier.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-600/20 hover:bg-pink-600/30 text-pink-300 border border-pink-500/30 text-xs font-semibold transition"
+                      title="Ver en Instagram"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Abrir Instagram</span>
+                    </a>
+                  )}
+
+                  {/* AI Autopilot Switch Button */}
+                  <button
+                    onClick={handleToggleAutopilot}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+                      activeConversation.aiAutoPilot
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
+                        : 'bg-gray-800/80 border-gray-700 text-gray-400 hover:text-white'
+                    }`}
+                    title="Activar o pausar respuesta autónoma de la IA 24/7 en esta conversación"
+                  >
+                    <Bot className={`w-4 h-4 ${activeConversation.aiAutoPilot ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`} />
+                    <span>
+                      IA 24/7: <strong className={activeConversation.aiAutoPilot ? 'text-emerald-400' : 'text-gray-400'}>{activeConversation.aiAutoPilot ? 'ON' : 'OFF'}</strong>
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {/* Messages Body */}
@@ -391,6 +473,124 @@ export const SocialInboxView: React.FC<SocialInboxViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* New Conversation Modal */}
+      {isNewChatOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-gray-950 border border-gray-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+            <button
+              type="button"
+              onClick={() => setIsNewChatOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <MessageCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white">Iniciar Nueva Conversación Directa</h3>
+                <p className="text-xs text-gray-400">Envía un mensaje real a un prospecto o número telefónico</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleStartNewChat} className="space-y-3.5 text-xs">
+              <div>
+                <label className="text-gray-300 block mb-1 font-semibold">Canal de Comunicación:</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+                    { id: 'instagram', label: 'Instagram', icon: Instagram },
+                    { id: 'email', label: 'Email', icon: Mail }
+                  ].map(ch => {
+                    const Icon = ch.icon;
+                    return (
+                      <button
+                        key={ch.id}
+                        type="button"
+                        onClick={() => {
+                          setNewChatChannel(ch.id as any);
+                          if (ch.id === 'whatsapp') setNewChatPhoneOrId('+58 412 359 0065');
+                          else if (ch.id === 'instagram') setNewChatPhoneOrId('@gabrielemphoto');
+                          else setNewChatPhoneOrId('cliente@ejemplo.com');
+                        }}
+                        className={`flex items-center justify-center gap-1.5 py-2 rounded-xl border text-xs font-semibold transition ${
+                          newChatChannel === ch.id
+                            ? 'bg-indigo-600 border-indigo-500 text-white shadow-md'
+                            : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        <span>{ch.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-gray-300 block mb-1 font-semibold">Nombre del Contacto o Empresa:</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ej. Gabriel Morales"
+                  value={newChatName}
+                  onChange={e => setNewChatName(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-gray-300 block mb-1 font-semibold">
+                  {newChatChannel === 'whatsapp'
+                    ? 'Número de WhatsApp (con código de país, ej. +58 412...):'
+                    : newChatChannel === 'instagram'
+                    ? 'Usuario de Instagram (@usuario):'
+                    : 'Correo Electrónico:'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={newChatChannel === 'whatsapp' ? '+58 412 359 0065' : newChatChannel === 'instagram' ? '@gabrielemphoto' : 'cliente@ejemplo.com'}
+                  value={newChatPhoneOrId}
+                  onChange={e => setNewChatPhoneOrId(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-gray-300 block mb-1 font-semibold">Primer Mensaje:</label>
+                <textarea
+                  rows={3}
+                  value={newChatInitialText}
+                  onChange={e => setNewChatInitialText(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsNewChatOpen(false)}
+                  className="flex-1 py-2.5 bg-gray-900 hover:bg-gray-800 text-gray-300 text-xs font-semibold rounded-xl border border-gray-800 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingChat || !newChatName.trim() || !newChatPhoneOrId.trim()}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center justify-center gap-1.5"
+                >
+                  {creatingChat ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  <span>Iniciar Conversación</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

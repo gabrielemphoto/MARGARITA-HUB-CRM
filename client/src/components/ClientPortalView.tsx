@@ -50,33 +50,42 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({ portalUsers 
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800/60 text-gray-200">
-            {portalUsers.map(user => (
-              <tr key={user.id} className="hover:bg-gray-800/40 transition">
-                <td className="py-3.5 px-4 font-bold text-white flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
-                    {user.name.charAt(0)}
-                  </div>
-                  <span>{user.name}</span>
-                </td>
-                <td className="py-3.5 px-4 text-gray-400 font-mono">{user.email}</td>
-                <td className="py-3.5 px-4">
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-semibold">
-                    {user.accessStatus}
-                  </span>
-                </td>
-                <td className="py-3.5 px-4">
-                  <span className="text-indigo-400 font-semibold">
-                    {user.enrolledCourses.length} cursos activos
-                  </span>
-                </td>
-                <td className="py-3.5 px-4 text-gray-400">{user.lastLogin}</td>
-                <td className="py-3.5 px-4 text-right">
-                  <button className="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-semibold transition">
-                    Restablecer Clave
-                  </button>
+            {portalUsers.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-12 text-center text-xs text-gray-500">
+                  <User className="w-8 h-8 text-indigo-400/30 mx-auto mb-2" />
+                  No hay usuarios registrados en el portal todavía. Invita a tus primeros clientes o alumnos.
                 </td>
               </tr>
-            ))}
+            ) : (
+              portalUsers.map(user => (
+                <tr key={user.id} className="hover:bg-gray-800/40 transition">
+                  <td className="py-3.5 px-4 font-bold text-white flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                      {user.name.charAt(0)}
+                    </div>
+                    <span>{user.name}</span>
+                  </td>
+                  <td className="py-3.5 px-4 text-gray-400 font-mono">{user.email}</td>
+                  <td className="py-3.5 px-4">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-semibold">
+                      {user.accessStatus}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span className="text-indigo-400 font-semibold">
+                      {user.enrolledCourses.length} cursos activos
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4 text-gray-400">{user.lastLogin}</td>
+                  <td className="py-3.5 px-4 text-right">
+                    <button className="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-semibold transition">
+                      Restablecer Clave
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

@@ -37,8 +37,14 @@ export const MarketingView: React.FC<MarketingViewProps> = ({ campaigns }) => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {campaigns.map(camp => (
+      {campaigns.length === 0 ? (
+        <div className="bg-gray-900/60 border border-gray-800/80 rounded-2xl p-12 text-center text-xs text-gray-500">
+          <Mail className="w-8 h-8 text-indigo-400/30 mx-auto mb-2" />
+          No hay campañas de email masivo enviadas todavía. Haz clic en "Nueva Campaña Masiva" para redactar una.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {campaigns.map(camp => (
           <div
             key={camp.id}
             className="bg-gray-900/60 border border-gray-800/80 hover:border-indigo-500/40 rounded-xl p-5 flex flex-col justify-between transition-all group"
@@ -83,6 +89,7 @@ export const MarketingView: React.FC<MarketingViewProps> = ({ campaigns }) => {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 };

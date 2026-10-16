@@ -73,11 +73,17 @@ export const ReputationView: React.FC<ReputationViewProps> = ({ reviews, onRefre
 
       {/* Reviews List */}
       <div className="space-y-4">
-        {reviews.map(rev => (
-          <div
-            key={rev.id}
-            className="bg-gray-900/60 border border-gray-800/80 rounded-2xl p-6 shadow-xl space-y-4"
-          >
+        {reviews.length === 0 ? (
+          <div className="bg-gray-900/60 border border-gray-800/80 rounded-2xl p-12 text-center text-xs text-gray-500">
+            <Star className="w-8 h-8 text-amber-500/30 mx-auto mb-2" />
+            No hay reseñas registradas aún. Las opiniones recibidas en Google, Facebook o Trustpilot aparecerán aquí.
+          </div>
+        ) : (
+          reviews.map(rev => (
+            <div
+              key={rev.id}
+              className="bg-gray-900/60 border border-gray-800/80 rounded-2xl p-6 shadow-xl space-y-4"
+            >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
@@ -174,7 +180,8 @@ export const ReputationView: React.FC<ReputationViewProps> = ({ reviews, onRefre
               </div>
             )}
           </div>
-        ))}
+        ))
+        )}
       </div>
     </div>
   );

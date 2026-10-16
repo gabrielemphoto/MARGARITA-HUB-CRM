@@ -263,34 +263,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/60 text-gray-200">
-              {recentActivity?.map((act: any, idx: number) => (
-                <tr
-                  key={idx}
-                  className="hover:bg-gray-800/40 cursor-pointer transition"
-                  onClick={() => onNavigate('contacts')}
-                >
-                  <td className="py-3 font-semibold text-white">{act.contact}</td>
-                  <td className="py-3 text-gray-400">{act.company || '-'}</td>
-                  <td className="py-3">
-                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[10px] font-semibold">
-                      {act.stage}
-                    </span>
+              {(!recentActivity || recentActivity.length === 0) ? (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-xs text-gray-500">
+                    No hay prospectos ni interacciones registradas aún. Haz clic en "Ver Todos los Contactos" para registrar tu primer lead o conecta tus canales.
                   </td>
-                  <td className="py-3 font-bold text-emerald-400">${act.value?.toLocaleString()} USD</td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-12 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-indigo-500 rounded-full"
-                          style={{ width: `${act.leadScore || 50}%` }}
-                        ></div>
-                      </div>
-                      <span className="font-mono text-[11px] text-gray-400">{act.leadScore}/100</span>
-                    </div>
-                  </td>
-                  <td className="py-3 text-gray-400">{act.activity}</td>
                 </tr>
-              ))}
+              ) : (
+                recentActivity.map((act: any, idx: number) => (
+                  <tr
+                    key={idx}
+                    className="hover:bg-gray-800/40 cursor-pointer transition"
+                    onClick={() => onNavigate('contacts')}
+                  >
+                    <td className="py-3 font-semibold text-white">{act.contact}</td>
+                    <td className="py-3 text-gray-400">{act.company || '-'}</td>
+                    <td className="py-3">
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[10px] font-semibold">
+                        {act.stage}
+                      </span>
+                    </td>
+                    <td className="py-3 font-bold text-emerald-400">${act.value?.toLocaleString()} USD</td>
+                    <td className="py-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-12 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-indigo-500 rounded-full"
+                            style={{ width: `${act.leadScore || 50}%` }}
+                          ></div>
+                        </div>
+                        <span className="font-mono text-[11px] text-gray-400">{act.leadScore}/100</span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-gray-400">{act.activity}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

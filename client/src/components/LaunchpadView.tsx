@@ -41,23 +41,23 @@ export const LaunchpadView: React.FC<LaunchpadViewProps> = ({
     },
     {
       id: 'whatsapp',
-      title: 'Integrar WhatsApp Cloud API',
-      desc: 'Conecta tu número oficial de WhatsApp Business para envío de flujos, confirmaciones y chat en vivo.',
+      title: 'Vincular WhatsApp (Código o Sesión)',
+      desc: 'Conecta tu número de WhatsApp para envío de mensajes, flujos y atención al cliente con IA 24/7.',
       icon: MessageCircle,
-      completed: integrations?.whatsapp?.status === 'connected',
+      completed: Boolean(integrations?.whatsapp?.status === 'connected' || integrations?.whatsappSession?.connected),
       actionLabel: 'Gestionar WhatsApp',
       targetModule: 'integrations' as ActiveModule,
-      badge: integrations?.whatsapp?.status === 'connected' ? 'Conectado' : 'Sin vincular'
+      badge: (integrations?.whatsapp?.status === 'connected' || integrations?.whatsappSession?.connected) ? 'Conectado' : 'Sin vincular'
     },
     {
       id: 'instagram',
       title: 'Conectar Instagram Direct Messaging',
-      desc: 'Responde comentarios, stories y mensajes directos de forma autónoma con tu asistente de IA.',
+      desc: 'Inicia sesión con tu cuenta de Instagram para responder DMs, menciones y stories con IA.',
       icon: Instagram,
-      completed: integrations?.instagram?.status === 'connected',
+      completed: Boolean(integrations?.instagram?.status === 'connected' || integrations?.instagramSession?.connected),
       actionLabel: 'Vincular Instagram',
       targetModule: 'integrations' as ActiveModule,
-      badge: integrations?.instagram?.status === 'connected' ? 'Conectado' : 'Sin vincular'
+      badge: (integrations?.instagram?.status === 'connected' || integrations?.instagramSession?.connected) ? 'Conectado' : 'Sin vincular'
     },
     {
       id: 'email',

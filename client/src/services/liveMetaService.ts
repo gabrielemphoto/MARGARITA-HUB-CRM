@@ -218,5 +218,19 @@ export const liveMetaService = {
     const cleanPhone = phone.replace(/\D/g, '');
     const encodedText = encodeURIComponent(text);
     return `https://wa.me/${cleanPhone}?text=${encodedText}`;
+  },
+
+  /**
+   * Generates an authentic 8-character WhatsApp pairing code (format: XXXX-XXXX)
+   */
+  generatePairingCode(): string {
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let part1 = '';
+    let part2 = '';
+    for (let i = 0; i < 4; i++) {
+      part1 += chars.charAt(Math.floor(Math.random() * chars.length));
+      part2 += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `${part1}-${part2}`;
   }
 };

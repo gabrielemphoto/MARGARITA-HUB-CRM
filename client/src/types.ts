@@ -108,6 +108,22 @@ export interface IntegrationSettings {
     workspaceId: string;
     status: 'connected' | 'disconnected';
   };
+  whatsappSession?: WhatsAppSession;
+  instagramSession?: InstagramSession;
+}
+
+export interface WhatsAppSession {
+  connected: boolean;
+  phoneNumber?: string;
+  pairingCode?: string;
+  connectedAt?: string;
+  method?: 'pairing_code' | 'qr' | 'cloud_api';
+}
+
+export interface InstagramSession {
+  connected: boolean;
+  username?: string;
+  connectedAt?: string;
 }
 
 export interface Contact {

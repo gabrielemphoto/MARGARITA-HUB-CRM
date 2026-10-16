@@ -75,9 +75,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span
             onClick={() => onNavigate('integrations')}
             className={`flex items-center gap-1 cursor-pointer transition ${
-              integrations?.whatsapp?.status === 'connected' ? 'text-emerald-400 hover:text-emerald-300' : 'text-gray-500 hover:text-gray-400'
+              (integrations?.whatsapp?.status === 'connected' || integrations?.whatsappSession?.connected) ? 'text-emerald-400 hover:text-emerald-300 font-semibold' : 'text-gray-500 hover:text-gray-400'
             }`}
-            title="WhatsApp Cloud API"
+            title={integrations?.whatsappSession?.connected ? `WhatsApp Vinculado (${integrations.whatsappSession.phoneNumber})` : 'WhatsApp'}
           >
             <MessageCircle className="w-3.5 h-3.5" />
             <span className="hidden xl:inline text-[11px]">WhatsApp</span>
@@ -86,9 +86,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span
             onClick={() => onNavigate('integrations')}
             className={`flex items-center gap-1 cursor-pointer transition ${
-              integrations?.instagram?.status === 'connected' ? 'text-pink-400 hover:text-pink-300' : 'text-gray-500 hover:text-gray-400'
+              (integrations?.instagram?.status === 'connected' || integrations?.instagramSession?.connected) ? 'text-pink-400 hover:text-pink-300 font-semibold' : 'text-gray-500 hover:text-gray-400'
             }`}
-            title="Instagram Direct API"
+            title={integrations?.instagramSession?.connected ? `Instagram Vinculado (${integrations.instagramSession.username})` : 'Instagram'}
           >
             <Instagram className="w-3.5 h-3.5" />
             <span className="hidden xl:inline text-[11px]">Instagram</span>

@@ -20,7 +20,9 @@ import {
   MediaFile,
   ReviewItem,
   AISettings,
-  IntegrationSettings
+  IntegrationSettings,
+  WhatsAppSession,
+  InstagramSession
 } from './types';
 import {
   initialAiSettings,
@@ -73,6 +75,92 @@ const API = axios.create({
 
 // Detect static hosting (e.g. github.io)
 const isStaticHost = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
+
+// Auto-purge any legacy mock contacts/conversations/transactions previously seeded in browser localStorage
+const purgeLegacyMockData = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    const purgeFlag = localStorage.getItem('margarita_purged_mock_v5');
+    if (!purgeFlag) {
+      // Check contacts
+      const rawContacts = localStorage.getItem('margarita_contacts');
+      if (rawContacts) {
+        const contacts: Contact[] = JSON.parse(rawContacts);
+        const hasMock = contacts.some(c => 
+          c.id.startsWith('c-') || 
+          ['Valentina', 'Rodrigo', 'Elena', 'Carlos'].includes(c.firstName)
+        );
+        if (hasMock) {
+          localStorage.removeItem('margarita_contacts');
+        }
+      }
+
+      // Check conversations & messages
+      const rawConvs = localStorage.getItem('margarita_conversations');
+      if (rawConvs) {
+        const convs = JSON.parse(rawConvs);
+        const hasMockConv = convs.some((c: any) => c.id?.startsWith('conv-') || c.contactName?.includes('Valentina') || c.contactName?.includes('Rodrigo'));
+        if (hasMockConv) {
+          localStorage.removeItem('margarita_conversations');
+          localStorage.removeItem('margarita_messages');
+        }
+      }
+
+      // Check transactions
+      const rawTx = localStorage.getItem('margarita_transactions');
+      if (rawTx) {
+        const txs = JSON.parse(rawTx);
+        const hasMockTx = txs.some((t: any) => t.id === 'tx-101' || t.contactName?.includes('Elena'));
+        if (hasMockTx) {
+          localStorage.removeItem('margarita_transactions');
+        }
+      }
+
+      // Check reviews
+      const rawRev = localStorage.getItem('margarita_reviews');
+      if (rawRev) {
+        const revs = JSON.parse(rawRev);
+        const hasMockRev = revs.some((r: any) => r.id === 'rev-1' || r.author?.includes('Guillermo'));
+        if (hasMockRev) {
+          localStorage.removeItem('margarita_reviews');
+        }
+      }
+
+      // Check campaigns
+      const rawCamp = localStorage.getItem('margarita_campaigns');
+      if (rawCamp) {
+        const camps = JSON.parse(rawCamp);
+        if (camps.some((c: any) => c.id === 'camp-1')) {
+          localStorage.removeItem('margarita_campaigns');
+        }
+      }
+
+      // Check portal users
+      const rawPu = localStorage.getItem('margarita_portalUsers');
+      if (rawPu) {
+        const pus = JSON.parse(rawPu);
+        if (pus.some((p: any) => p.id === 'pu-1' || p.name?.includes('Elena'))) {
+          localStorage.removeItem('margarita_portalUsers');
+        }
+      }
+
+      // Clean dummy tokens in integrations
+      const rawInteg = localStorage.getItem('margarita_integrations');
+      if (rawInteg) {
+        const integ = JSON.parse(rawInteg);
+        if (integ.facebook?.accessToken?.includes('...') || integ.stripe?.publishableKey?.includes('...')) {
+          localStorage.removeItem('margarita_integrations');
+        }
+      }
+
+      localStorage.setItem('margarita_purged_mock_v5', 'true');
+    }
+  } catch (err) {
+    console.error('Error purging legacy mock data:', err);
+  }
+};
+
+purgeLegacyMockData();
 
 export const api = {
   // Dashboard
@@ -503,6 +591,87 @@ export const api = {
       aiReply: aiMsg,
       conversation: conv
     };
+  },
+
+  startRealConversation: async (params: {
+    contactName: string;
+    phoneOrIdentifier: string;
+    channel: 'whatsapp' | 'instagram' | 'facebook' | 'email';
+    initialMessage?: string;
+  }) => {
+    const convs = getStore<Conversation[]>('conversations', initialConversations);
+    const msgs = getStore<ConversationMessage[]>('messages', initialMessages);
+    const contacts = getStore<Contact[]>('contacts', initialContacts);
+
+    const cleanId = params.phoneOrIdentifier.trim();
+    const cleanPhoneDigits = cleanId.replace(/\D/g, '');
+
+    // Check if contact already exists or create one
+    let contact = contacts.find(c => 
+      (cleanPhoneDigits && c.phone.replace(/\D/g, '') === cleanPhoneDigits) || 
+      (c.email && c.email.toLowerCase() === cleanId.toLowerCase())
+    );
+
+    if (!contact) {
+      const parts = params.contactName.trim().split(' ');
+      contact = {
+        id: `cnt-${Date.now()}`,
+        firstName: parts[0] || 'Contacto',
+        lastName: parts.slice(1).join(' ') || '',
+        email: params.channel === 'email' ? cleanId : '',
+        phone: params.channel === 'whatsapp' ? cleanId : '',
+        company: '',
+        tags: [params.channel.toUpperCase()],
+        smartList: 'all',
+        pipelineStageId: 'stage-1',
+        opportunityValue: 0,
+        leadScore: 60,
+        assignedTo: 'Gabriel (Admin)',
+        notes: [],
+        tasks: [],
+        createdAt: new Date().toISOString().split('T')[0],
+        lastActivity: 'Conversación directa iniciada',
+        aiAutoPilot: true
+      };
+      contacts.unshift(contact);
+      setStore('contacts', contacts);
+    }
+
+    // Check if conversation exists
+    let conv: Conversation | undefined = convs.find(c => c.channelIdentifier === cleanId && c.channel === params.channel);
+    if (!conv) {
+      conv = {
+        id: `cnv-${Date.now()}`,
+        contactId: contact.id,
+        contactName: `${contact.firstName} ${contact.lastName}`.trim(),
+        channel: params.channel,
+        channelIdentifier: cleanId,
+        lastMessage: params.initialMessage || 'Conversación iniciada',
+        lastMessageAt: 'Ahora',
+        unreadCount: 0,
+        aiAutoPilot: true,
+        assignedTo: 'Gabriel (Admin)'
+      };
+      convs.unshift(conv);
+      setStore('conversations', convs);
+    }
+
+    if (params.initialMessage && conv) {
+      const msg: ConversationMessage = {
+        id: `msg-${Date.now()}`,
+        conversationId: conv.id,
+        sender: 'agent',
+        senderName: 'Gabriel (Admin)',
+        channel: params.channel,
+        text: params.initialMessage,
+        timestamp: 'Ahora',
+        read: true
+      };
+      msgs.push(msg);
+      setStore('messages', msgs);
+    }
+
+    return { conversation: conv!, contact };
   },
 
   // Calendars
@@ -1101,5 +1270,69 @@ export const api = {
     (ints as any)[platform] = { ...(ints as any)[platform], ...data };
     setStore('integrations', ints);
     return (ints as any)[platform];
+  },
+
+  // WhatsApp Direct Session (Pairing Code / QR)
+  getWhatsAppSession: async (): Promise<WhatsAppSession> => {
+    return getStore<WhatsAppSession>('whatsapp_session', {
+      connected: false,
+      phoneNumber: '+58 412 359 0065',
+      method: 'pairing_code'
+    });
+  },
+
+  saveWhatsAppSession: async (session: WhatsAppSession): Promise<WhatsAppSession> => {
+    setStore<WhatsAppSession>('whatsapp_session', session);
+    const ints = getStore<IntegrationSettings>('integrations', initialIntegrations);
+    ints.whatsappSession = session;
+    ints.whatsapp.status = session.connected ? 'connected' : 'disconnected';
+    ints.whatsapp.enabled = session.connected;
+    setStore('integrations', ints);
+    return session;
+  },
+
+  disconnectWhatsAppSession: async (): Promise<void> => {
+    const session: WhatsAppSession = {
+      connected: false,
+      phoneNumber: '',
+      method: 'pairing_code'
+    };
+    setStore<WhatsAppSession>('whatsapp_session', session);
+    const ints = getStore<IntegrationSettings>('integrations', initialIntegrations);
+    ints.whatsappSession = session;
+    ints.whatsapp.status = 'disconnected';
+    ints.whatsapp.enabled = false;
+    setStore('integrations', ints);
+  },
+
+  // Instagram Direct Session (OAuth Connection)
+  getInstagramSession: async (): Promise<InstagramSession> => {
+    return getStore<InstagramSession>('instagram_session', {
+      connected: false,
+      username: ''
+    });
+  },
+
+  saveInstagramSession: async (session: InstagramSession): Promise<InstagramSession> => {
+    setStore<InstagramSession>('instagram_session', session);
+    const ints = getStore<IntegrationSettings>('integrations', initialIntegrations);
+    ints.instagramSession = session;
+    ints.instagram.status = session.connected ? 'connected' : 'disconnected';
+    ints.instagram.enabled = session.connected;
+    setStore('integrations', ints);
+    return session;
+  },
+
+  disconnectInstagramSession: async (): Promise<void> => {
+    const session: InstagramSession = {
+      connected: false,
+      username: ''
+    };
+    setStore<InstagramSession>('instagram_session', session);
+    const ints = getStore<IntegrationSettings>('integrations', initialIntegrations);
+    ints.instagramSession = session;
+    ints.instagram.status = 'disconnected';
+    ints.instagram.enabled = false;
+    setStore('integrations', ints);
   }
 };
