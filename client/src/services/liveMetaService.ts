@@ -78,24 +78,43 @@ export const liveMetaService = {
       return {
         success: false,
         status: 'error',
-        error: 'El número de teléfono de destino no es válido. Debe incluir el código de país (ej. +1, +34, +58, +52).'
+        error: 'El número de teléfono no es válido. Debe incluir el código de país (ej. +34..., +58..., +52..., +1...).'
       };
     }
 
-    if (!phoneNumberId || !accessToken || accessToken.length < 15) {
+    if (cleanPhone === '15551234567') {
+      return {
+        success: false,
+        status: 'error',
+        error: 'El número +1 (555) 123-4567 es un ejemplo de muestra. Por favor introduce tu número de WhatsApp real con código de país.'
+      };
+    }
+
+    const cleanToken = (accessToken || '').trim();
+    const cleanId = (phoneNumberId || '').trim();
+
+    if (!cleanId || cleanId === '1098234729104') {
       return {
         success: false,
         status: 'config_missing',
-        error: 'No se ha configurado el Phone Number ID o el Access Token de Meta en Integraciones.'
+        error: 'El Phone Number ID actual es un valor de ejemplo (1098234729104). Copia tu Phone Number ID real desde Meta Developers > WhatsApp > Getting Started.'
+      };
+    }
+
+    if (!cleanToken || cleanToken.includes('...') || cleanToken.includes('MARGARITA') || cleanToken.includes('LUXORA') || cleanToken.length < 30) {
+      return {
+        success: false,
+        status: 'config_missing',
+        error: 'El Token actual es un texto de ejemplo ("EAAQ..."). Debes pegar tu Token real generado en developers.facebook.com (empieza por EAAB... o EAA... y tiene más de 150 caracteres).'
       };
     }
 
     try {
-      const url = `https://graph.facebook.com/v21.0/${phoneNumberId.trim()}/messages`;
+      const url = `https://graph.facebook.com/v21.0/${cleanId}/messages`;
       const res = await fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken.trim()}`,
+          'Authorization': `Bearer ${cleanToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -112,10 +131,23 @@ export const liveMetaService = {
 
       const data = await res.json();
       if (!res.ok) {
+        const metaError = data?.error;
+        const rawMsg = metaError?.message || `Error HTTP ${res.status}`;
+        const code = metaError?.code;
+
+        let friendlyError = rawMsg;
+        if (rawMsg.includes('Invalid JSON for postcard') || code === 190 || metaError?.type === 'OAuthException') {
+          friendlyError = 'Error de Meta (Code 190): El Access Token es inválido, expiró o fue truncado. Ve a developers.facebook.com > WhatsApp > Primeros pasos y copia un token nuevo.';
+        } else if (code === 131030 || code === 131000 || rawMsg.includes('not in allowed list')) {
+          friendlyError = 'Número no autorizado en Sandbox (Code 131030): En la cuenta de prueba de Meta debes agregar tu número en el campo "Para (To)" en developers.facebook.com para autorizarlo.';
+        } else if (code === 131047) {
+          friendlyError = 'Ventana de 24 horas cerrada (Code 131047): Meta requiere que el cliente te haya enviado un mensaje primero en las últimas 24h o usar una plantilla verificada (Template).';
+        }
+
         return {
           success: false,
           status: 'meta_error',
-          error: data?.error?.message || `Error ${res.status} al enviar por Meta Cloud API.`
+          error: friendlyError
         };
       }
 

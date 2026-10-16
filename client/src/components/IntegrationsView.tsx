@@ -40,10 +40,11 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ integrations
   // WhatsApp Live Testing State
   const [verifyingWa, setVerifyingWa] = useState(false);
   const [waVerifyResult, setWaVerifyResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [testWaPhone, setTestWaPhone] = useState('+1 (555) 123-4567');
+  const [testWaPhone, setTestWaPhone] = useState('');
   const [testWaMessage, setTestWaMessage] = useState('¡Hola! Este es un mensaje de prueba desde MARGARITA HUB CRM con Agente de IA 24/7.');
   const [sendingTestWa, setSendingTestWa] = useState(false);
   const [testWaStatus, setTestWaStatus] = useState<{ success: boolean; text: string; fallbackUrl?: string } | null>(null);
+  const [showWaGuide, setShowWaGuide] = useState(false);
 
   // Instagram Live Testing State
   const [verifyingIg, setVerifyingIg] = useState(false);
@@ -212,12 +213,32 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ integrations
                   <MessageCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">WhatsApp Business Cloud API (Meta Oficial)</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-white">WhatsApp Business Cloud API (Meta Oficial)</h3>
+                    {formData.whatsapp.accessToken && !formData.whatsapp.accessToken.includes('...') && formData.whatsapp.accessToken.length > 30 ? (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold">
+                        Configurado
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-bold">
+                        Requiere Token de Meta
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400">Envío de mensajes oficiales, flujos interactivos y auto-respuestas IA 24/7</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWaGuide(!showWaGuide)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-xs font-semibold transition"
+                >
+                  <Info className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{showWaGuide ? 'Ocultar Guía' : '📖 Guía Paso a Paso'}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={handleVerifyWhatsApp}
@@ -229,6 +250,39 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ integrations
                 </button>
               </div>
             </div>
+
+            {/* Expandable Step-by-Step Meta WhatsApp Guide */}
+            {showWaGuide && (
+              <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 space-y-2.5 animate-in fade-in">
+                <div className="font-bold text-white flex items-center gap-2 text-sm">
+                  <Info className="w-4 h-4 text-indigo-400" />
+                  ¿Cómo obtener tu Token y Phone Number ID real en Meta en 3 minutos?
+                </div>
+                <ol className="list-decimal list-inside space-y-1.5 text-gray-300 text-xs">
+                  <li>
+                    Ingresa a <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline font-semibold">developers.facebook.com</a> e inicia sesión con tu cuenta de Facebook.
+                  </li>
+                  <li>
+                    Crea una App de tipo <strong>"Otro"</strong> &gt; <strong>"Negocios"</strong> (o abre una app existente).
+                  </li>
+                  <li>
+                    En el panel izquierdo, busca el producto <strong>WhatsApp</strong> y haz clic en <strong>Primeros pasos (Getting Started)</strong>.
+                  </li>
+                  <li>
+                    Copia el <strong>"Identificador de número de teléfono" (Phone Number ID)</strong> y pégalo abajo.
+                  </li>
+                  <li>
+                    Copia el <strong>"Token de acceso temporal"</strong> (comienza por <code className="bg-gray-900 px-1 py-0.5 rounded text-indigo-300 font-mono">EAAB...</code>) y pégalo abajo.
+                  </li>
+                  <li>
+                    <strong className="text-amber-300">Importante para pruebas:</strong> En el campo <em>"Para (To)"</em> de la página de Meta, agrega tu número de WhatsApp personal para autorizarlo antes de enviar mensajes de prueba.
+                  </li>
+                </ol>
+                <div className="text-[11px] text-gray-400 pt-1">
+                  💡 <em>Nota: Si no deseas usar la API de Meta en este momento, puedes usar la opción de <strong>"Abrir en WhatsApp Web / Móvil"</strong> o el <strong>Código QR</strong> para chatear inmediatamente con tus clientes sin ninguna configuración adicional.</em>
+                </div>
+              </div>
+            )}
 
             {waVerifyResult && (
               <div className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 ${
@@ -321,12 +375,12 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ integrations
                 <div className="md:col-span-8 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <label className="text-gray-400 block mb-1">Tu Número (con código país, ej: +34 612..., +58 412...)</label>
+                      <label className="text-gray-400 block mb-1">Tu Número Real de WhatsApp (con código de país, ej: +34 612..., +58 412...)</label>
                       <input
                         type="text"
                         value={testWaPhone}
                         onChange={e => setTestWaPhone(e.target.value)}
-                        placeholder="+34 612 345 678"
+                        placeholder="+34 612 345 678 o +58 412 123 4567"
                         className="w-full bg-gray-900 border border-gray-800 rounded-lg p-2 text-white font-mono text-xs"
                       />
                     </div>
@@ -345,15 +399,15 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ integrations
                     <button
                       type="button"
                       onClick={handleSendTestWhatsApp}
-                      disabled={sendingTestWa}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-md flex items-center gap-1.5 transition"
+                      disabled={sendingTestWa || !testWaPhone.trim()}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg shadow-md flex items-center gap-1.5 transition"
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>{sendingTestWa ? 'Enviando por Meta API...' : 'Enviar Mensaje Real'}</span>
                     </button>
 
                     <a
-                      href={qrDirectLink}
+                      href={testWaPhone.trim() ? qrDirectLink : `https://wa.me/?text=${encodeURIComponent(testWaMessage)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-lg border border-gray-700 flex items-center gap-1.5 transition"
@@ -361,6 +415,12 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ integrations
                       <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
                       <span>Abrir en WhatsApp Web / Móvil</span>
                     </a>
+
+                    {!testWaPhone.trim() && (
+                      <span className="text-[11px] text-gray-500 italic">
+                        (Ingresa tu número para habilitar el envío oficial vía API)
+                      </span>
+                    )}
                   </div>
 
                   {testWaStatus && (

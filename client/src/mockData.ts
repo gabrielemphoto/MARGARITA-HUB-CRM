@@ -48,20 +48,20 @@ Sé conciso, empático y orientado a la conversión comercial.`,
 
 export const initialIntegrations: IntegrationSettings = {
   whatsapp: {
-    enabled: true,
-    phoneNumberId: '1098234729104',
-    wabaId: '3948271049281',
-    accessToken: 'EAAQ...MARGARITA_WHATSAPP_TOKEN',
+    enabled: false,
+    phoneNumberId: '',
+    wabaId: '',
+    accessToken: '',
     verifyToken: 'margarita_verify_token_2026',
-    status: 'connected'
+    status: 'disconnected'
   },
   instagram: {
-    enabled: true,
-    pageId: '1029384756',
-    igUserId: '17841400293847',
-    accessToken: 'EAAC...MARGARITA_IG_TOKEN',
+    enabled: false,
+    pageId: '',
+    igUserId: '',
+    accessToken: '',
     verifyToken: 'margarita_ig_webhook_2026',
-    status: 'connected'
+    status: 'disconnected'
   },
   facebook: {
     enabled: true,
