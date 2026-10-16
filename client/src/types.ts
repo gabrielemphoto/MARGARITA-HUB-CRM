@@ -140,6 +140,14 @@ export interface PipelineStage {
   totalValue?: number;
 }
 
+export interface Pipeline {
+  id: string;
+  name: string;
+  description?: string;
+  isDefault?: boolean;
+  stages: PipelineStage[];
+}
+
 export interface ConversationMessage {
   id: string;
   conversationId: string;

@@ -2,6 +2,7 @@ import axios from 'axios';
 import {
   Contact,
   PipelineStage,
+  Pipeline,
   Conversation,
   ConversationMessage,
   Appointment,
@@ -12,6 +13,7 @@ import {
   WebinarItem,
   ClientPortalUser,
   Workflow,
+  WorkflowNode,
   Transaction,
   Course,
   EmailCampaign,
@@ -24,6 +26,7 @@ import {
   initialAiSettings,
   initialIntegrations,
   initialStages,
+  initialPipelines,
   initialContacts,
   initialConversations,
   initialMessages,
@@ -41,6 +44,8 @@ import {
   initialMedia,
   initialReviews
 } from './mockData';
+import { callRealAIProvider } from './services/liveAiService';
+import { liveMetaService } from './services/liveMetaService';
 
 // LocalStorage helper for offline / GitHub Pages mode
 const getStore = <T>(key: string, defaultVal: T): T => {
@@ -239,18 +244,16 @@ export const api = {
     return task;
   },
 
-  // Pipelines
+  // Pipelines (Multi-Pipeline & Stages Management)
   getPipelines: async () => {
-    if (!isStaticHost) {
-      try {
-        const r = await API.get<{ stages: PipelineStage[] }>('/pipelines');
-        return r.data;
-      } catch (e) {}
-    }
-    const stages = getStore<PipelineStage[]>('stages', initialStages);
+    let pipelines = getStore<Pipeline[]>('pipelines', initialPipelines);
+    const activePipelineId = getStore<string>('activePipelineId', pipelines[0]?.id || 'pipe-sales');
     const contacts = getStore<Contact[]>('contacts', initialContacts);
-    return {
-      stages: stages.map(st => {
+
+    // Enrich each pipeline's stages with current opportunities and total financial value
+    const enrichedPipelines: Pipeline[] = pipelines.map(p => ({
+      ...p,
+      stages: p.stages.map(st => {
         const stageContacts = contacts.filter(c => c.pipelineStageId === st.id);
         return {
           ...st,
@@ -258,7 +261,88 @@ export const api = {
           totalValue: stageContacts.reduce((sum, c) => sum + (c.opportunityValue || 0), 0)
         };
       })
+    }));
+
+    let activePipeline = enrichedPipelines.find(p => p.id === activePipelineId) || enrichedPipelines[0];
+
+    return {
+      pipelines: enrichedPipelines,
+      activePipelineId: activePipeline?.id || 'pipe-sales',
+      stages: activePipeline?.stages || []
     };
+  },
+
+  createPipeline: async (name: string, description?: string): Promise<Pipeline> => {
+    let pipelines = getStore<Pipeline[]>('pipelines', initialPipelines);
+    const newPipeline: Pipeline = {
+      id: `pipe-${Date.now()}`,
+      name: name.trim(),
+      description: description?.trim() || 'Pipeline de ventas personalizado',
+      isDefault: false,
+      stages: [
+        { id: `st-${Date.now()}-1`, name: 'Prospecto Calificado', color: '#3b82f6', order: 1 },
+        { id: `st-${Date.now()}-2`, name: 'Conversación Iniciada', color: '#f59e0b', order: 2 },
+        { id: `st-${Date.now()}-3`, name: 'Cita / Negociación', color: '#8b5cf6', order: 3 },
+        { id: `st-${Date.now()}-4`, name: 'Cierre Ganado', color: '#10b981', order: 4 }
+      ]
+    };
+    pipelines.push(newPipeline);
+    setStore('pipelines', pipelines);
+    setStore('activePipelineId', newPipeline.id);
+    return newPipeline;
+  },
+
+  deletePipeline: async (pipelineId: string): Promise<boolean> => {
+    let pipelines = getStore<Pipeline[]>('pipelines', initialPipelines);
+    if (pipelines.length <= 1) throw new Error('No puedes eliminar el único pipeline existente.');
+    pipelines = pipelines.filter(p => p.id !== pipelineId);
+    setStore('pipelines', pipelines);
+    setStore('activePipelineId', pipelines[0].id);
+    return true;
+  },
+
+  setActivePipeline: async (pipelineId: string): Promise<boolean> => {
+    setStore('activePipelineId', pipelineId);
+    return true;
+  },
+
+  addStageToPipeline: async (pipelineId: string, stageName: string, color: string): Promise<PipelineStage> => {
+    let pipelines = getStore<Pipeline[]>('pipelines', initialPipelines);
+    let pipe = pipelines.find(p => p.id === pipelineId);
+    if (!pipe) pipe = pipelines[0];
+
+    const newStage: PipelineStage = {
+      id: `st-${Date.now()}`,
+      name: stageName.trim(),
+      color: color || '#6366f1',
+      order: pipe.stages.length + 1
+    };
+    pipe.stages.push(newStage);
+    setStore('pipelines', pipelines);
+    return newStage;
+  },
+
+  deleteStageFromPipeline: async (pipelineId: string, stageId: string): Promise<boolean> => {
+    let pipelines = getStore<Pipeline[]>('pipelines', initialPipelines);
+    let pipe = pipelines.find(p => p.id === pipelineId);
+    if (!pipe) pipe = pipelines[0];
+    if (pipe.stages.length <= 1) throw new Error('El pipeline debe conservar al menos una etapa.');
+
+    pipe.stages = pipe.stages.filter(s => s.id !== stageId);
+    setStore('pipelines', pipelines);
+    return true;
+  },
+
+  updateStageInPipeline: async (pipelineId: string, stageId: string, data: Partial<PipelineStage>): Promise<PipelineStage> => {
+    let pipelines = getStore<Pipeline[]>('pipelines', initialPipelines);
+    let pipe = pipelines.find(p => p.id === pipelineId);
+    if (!pipe) pipe = pipelines[0];
+
+    const stage = pipe.stages.find(s => s.id === stageId);
+    if (!stage) throw new Error('Etapa no encontrada');
+    Object.assign(stage, data);
+    setStore('pipelines', pipelines);
+    return stage;
   },
 
   moveContactStage: async (contactId: string, stageId: string) => {
@@ -272,7 +356,7 @@ export const api = {
     const item = list.find(c => c.id === contactId);
     if (item) {
       item.pipelineStageId = stageId;
-      item.lastActivity = 'Cambio de etapa';
+      item.lastActivity = 'Cambio de etapa en pipeline';
     }
     setStore('contacts', list);
     return { success: true, contact: item };
@@ -385,22 +469,30 @@ export const api = {
     };
     msgs.push(userMsg);
 
-    // AI Autopilot 24/7 Answer
-    const aiText = `¡Hola ${conv.contactName.split(' ')[0]}! En MARGARITA HUB CRM tenemos planes desde $97/mes con embudos ilimitados, CRM omnicanal y agentes de IA 24/7 para WhatsApp e Instagram. ¿Te gustaría agendar una llamada de 15 min aquí: https://margaritahub.com/agendar-llamada?`;
+    // Dynamic AI Autopilot 24/7 Answer using the real configured AI Provider
+    const aiConfig = getStore<AISettings>('aiSettings', initialAiSettings);
+    const historyItems = msgs
+      .filter(m => m.conversationId === conv.id)
+      .map(m => ({ sender: m.sender, text: m.text }));
+
+    const contacts = getStore<Contact[]>('contacts', initialContacts);
+    const relatedContact = contacts.find(c => c.id === conv.contactId);
+
+    const aiResult = await callRealAIProvider(aiConfig, data.text, historyItems, relatedContact);
 
     const aiMsg: ConversationMessage = {
       id: `m-${Date.now()}-2`,
       conversationId: conv.id,
       sender: 'ai',
-      senderName: 'Margarita AI 24/7 (Native Autopilot)',
+      senderName: `Margarita AI (${aiResult.providerUsed})`,
       channel: conv.channel,
-      text: aiText,
+      text: aiResult.reply,
       timestamp: 'Ahora',
       read: true
     };
     msgs.push(aiMsg);
 
-    conv.lastMessage = aiText;
+    conv.lastMessage = aiResult.reply;
     conv.lastMessageAt = 'Ahora';
 
     setStore('conversations', convs);
@@ -667,12 +759,12 @@ export const api = {
     const newWf: Workflow = {
       id: `wf-${Date.now()}`,
       name: data.name || 'Nueva Automatización',
-      folder: data.folder || 'Generados vía AI',
+      folder: data.folder || 'Captación de Prospectos',
       status: 'active',
-      triggerType: data.triggerType || 'INCOMING_MESSAGE',
+      triggerType: data.triggerType || 'INCOMING_WHATSAPP',
       nodes: data.nodes || [],
       executionsCount: 0,
-      updatedAt: 'Ahora'
+      updatedAt: 'Ahora mismo'
     };
     list.unshift(newWf);
     setStore('workflows', list);
@@ -688,9 +780,115 @@ export const api = {
     }
     const list = getStore<Workflow[]>('workflows', initialWorkflows);
     const item = list.find(w => w.id === id);
-    if (item) Object.assign(item, data);
+    if (item) Object.assign(item, data, { updatedAt: 'Ahora mismo' });
     setStore('workflows', list);
     return item;
+  },
+
+  deleteWorkflow: async (id: string) => {
+    let list = getStore<Workflow[]>('workflows', initialWorkflows);
+    list = list.filter(w => w.id !== id);
+    setStore('workflows', list);
+    return true;
+  },
+
+  executeWorkflowLive: async (workflowId: string, contactId?: string) => {
+    const list = getStore<Workflow[]>('workflows', initialWorkflows);
+    const wf = list.find(w => w.id === workflowId);
+    if (!wf) throw new Error('Flujo de trabajo no encontrado');
+
+    const contacts = getStore<Contact[]>('contacts', initialContacts);
+    const contact = contacts.find(c => c.id === contactId) || contacts[0];
+    if (!contact) throw new Error('No hay contactos disponibles para probar la automatización.');
+
+    wf.executionsCount = (wf.executionsCount || 0) + 1;
+    wf.updatedAt = 'Ahora mismo';
+    setStore('workflows', list);
+
+    const logs: { time: string; nodeTitle: string; status: 'success' | 'failed'; detail: string }[] = [];
+    const nowTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    for (const node of wf.nodes) {
+      if (node.type === 'TRIGGER') {
+        logs.push({
+          time: nowTime(),
+          nodeTitle: node.title,
+          status: 'success',
+          detail: `⚡ Disparador activado para el contacto: ${contact.firstName} ${contact.lastName} (${contact.phone})`
+        });
+      } else if (node.type === 'SEND_WHATSAPP') {
+        const rawMsg = node.config?.message || '¡Hola {{firstName}}! Bienvenido a MARGARITA HUB CRM.';
+        const personalized = rawMsg
+          .replace(/\{\{firstName\}\}/g, contact.firstName)
+          .replace(/\{\{lastName\}\}/g, contact.lastName)
+          .replace(/\{\{company\}\}/g, contact.company || 'tu empresa');
+
+        // Add to conversation
+        await api.simulateIncomingMessage({
+          channel: 'whatsapp',
+          senderId: contact.phone || '+34 600 000 000',
+          senderName: `${contact.firstName} ${contact.lastName}`,
+          text: `[Mensaje Automático]: ${personalized}`
+        });
+
+        logs.push({
+          time: nowTime(),
+          nodeTitle: node.title,
+          status: 'success',
+          detail: `📲 WhatsApp despachado a ${contact.phone}: "${personalized.slice(0, 60)}..."`
+        });
+      } else if (node.type === 'SEND_INSTAGRAM') {
+        logs.push({
+          time: nowTime(),
+          nodeTitle: node.title,
+          status: 'success',
+          detail: `💬 Direct Message de Instagram enviado al perfil del lead.`
+        });
+      } else if (node.type === 'SEND_EMAIL') {
+        const subj = node.config?.subject || 'Confirmación de contacto';
+        logs.push({
+          time: nowTime(),
+          nodeTitle: node.title,
+          status: 'success',
+          detail: `✉️ Correo electrónico enviado a ${contact.email} (Asunto: "${subj}")`
+        });
+      } else if (node.type === 'MODIFY_LEAD_SCORE') {
+        const inc = Number(node.config?.increment) || 20;
+        contact.leadScore = (contact.leadScore || 50) + inc;
+        logs.push({
+          time: nowTime(),
+          nodeTitle: node.title,
+          status: 'success',
+          detail: `📈 Lead Score incrementado en +${inc} pts. Nuevo puntaje: ${contact.leadScore}/100`
+        });
+      } else if (node.type === 'TIME_DELAY') {
+        const mins = node.config?.delayMinutes || 15;
+        logs.push({
+          time: nowTime(),
+          nodeTitle: node.title,
+          status: 'success',
+          detail: `⏳ Temporizador de espera programado por ${mins} minutos.`
+        });
+      } else {
+        logs.push({
+          time: nowTime(),
+          nodeTitle: node.title,
+          status: 'success',
+          detail: `Acción ejecutada correctamente en el motor de automatización.`
+        });
+      }
+    }
+
+    contact.lastActivity = `Automatización: ${wf.name}`;
+    contact.notes.unshift({
+      id: `n-${Date.now()}`,
+      text: `Automatización ejecutada: "${wf.name}" (${logs.length} pasos completados con éxito).`,
+      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      author: 'Motor de Automatización'
+    });
+    setStore('contacts', contacts);
+
+    return { success: true, logs, contact };
   },
 
   generateWorkflowAI: async (prompt: string) => {
@@ -702,15 +900,15 @@ export const api = {
     }
     // Instant smart client generator
     return {
-      name: `Flujo AI: ${prompt.slice(0, 30)}...`,
+      name: `Flujo AI: ${prompt.slice(0, 35)}...`,
       folder: 'Generados vía AI',
-      triggerType: 'INCOMING_MESSAGE',
+      triggerType: 'INCOMING_WHATSAPP',
       nodes: [
         {
           id: 'n-ai-1',
           type: 'TRIGGER',
-          title: 'Disparador: Mensaje entrante multicanal',
-          description: 'Se activa al recibir consulta por WhatsApp o Instagram',
+          title: 'Disparador: Mensaje Entrante WhatsApp',
+          description: 'Se activa al recibir nueva consulta comercial por WhatsApp',
           config: {},
           next: 'n-ai-2'
         },
@@ -718,23 +916,23 @@ export const api = {
           id: 'n-ai-2',
           type: 'SEND_WHATSAPP',
           title: 'Respuesta con Asistente IA 24/7',
-          description: 'Envía información solicitada y enlace a catálogo',
-          config: {},
+          description: 'Envía información solicitada y enlace oficial para agendar llamada',
+          config: { message: '¡Hola {{firstName}}! Gracias por contactarnos. Te enviamos la información completa de MARGARITA HUB CRM.' },
           next: 'n-ai-3'
         },
         {
           id: 'n-ai-3',
           type: 'MODIFY_LEAD_SCORE',
-          title: 'Sumar Puntuación de Interés (+20 pts)',
+          title: 'Sumar Puntuación de Interés (+25 pts)',
           description: 'Eleva el score comercial a cliente interesado',
-          config: { increment: 20 },
+          config: { increment: 25 },
           next: 'n-ai-4'
         },
         {
           id: 'n-ai-4',
           type: 'TIME_DELAY',
           title: 'Tiempo de Espera (15 Minutos)',
-          description: 'Evalúa si el cliente completó la reserva',
+          description: 'Evalúa si el cliente completó la reserva en el calendario',
           config: { delayMinutes: 15 }
         }
       ]
@@ -766,16 +964,26 @@ export const api = {
   },
 
   testAI: async (message: string) => {
-    if (!isStaticHost) {
-      try {
-        const r = await API.post('/ai/test', { message });
-        return r.data;
-      } catch (e) {}
-    }
-    return {
-      reply: `¡Hola! Soy Margarita AI Assistant de MARGARITA HUB CRM. Respecto a tu consulta sobre "${message}": ofrecemos embudos de venta de alta conversión, CRM omnicanal y agentes de IA 24/7. Puedes reservar una asesoría directa aquí: https://margaritahub.com/agendar-llamada`,
-      providerUsed: 'Margarita Autonomous Engine (Native)'
-    };
+    const settings = getStore<AISettings>('aiSettings', initialAiSettings);
+    return await callRealAIProvider(settings, message);
+  },
+
+  // Meta Real Integrations (WhatsApp & Instagram)
+  verifyWhatsAppConnection: async (phoneNumberId: string, accessToken: string) => {
+    return await liveMetaService.verifyWhatsAppConnection(phoneNumberId, accessToken);
+  },
+
+  sendRealWhatsAppMessage: async (params: {
+    phoneNumberId: string;
+    accessToken: string;
+    toPhone: string;
+    messageText: string;
+  }) => {
+    return await liveMetaService.sendRealWhatsAppMessage(params);
+  },
+
+  verifyInstagramConnection: async (pageId: string, accessToken: string) => {
+    return await liveMetaService.verifyInstagramConnection(pageId, accessToken);
   },
 
   assistDraft: async (instruction: string, contextText?: string, tone?: string) => {

@@ -20,6 +20,7 @@ import {
 import { InstagramIcon as Instagram, FacebookIcon as Facebook } from './CustomIcons';
 import { AISettings } from '../types';
 import { api } from '../api';
+import { callRealAIProvider } from '../services/liveAiService';
 
 interface AIAgentsViewProps {
   aiSettings: AISettings;
@@ -117,7 +118,7 @@ export const AIAgentsView: React.FC<AIAgentsViewProps> = ({ aiSettings, onRefres
     setTestingAi(true);
 
     try {
-      const res = await api.testAI(userMsg);
+      const res = await callRealAIProvider(formSettings, userMsg);
       setChatLog(prev => [
         ...prev,
         {

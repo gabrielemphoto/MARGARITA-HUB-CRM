@@ -1,6 +1,7 @@
 import {
   Contact,
   PipelineStage,
+  Pipeline,
   Conversation,
   ConversationMessage,
   Appointment,
@@ -114,6 +115,41 @@ export const initialStages: PipelineStage[] = [
   { id: 'stage-4', name: 'Propuesta Enviada', color: '#f97316', order: 4 },
   { id: 'stage-5', name: 'Ganado (Vendido)', color: '#10b981', order: 5 },
   { id: 'stage-6', name: 'Perdido', color: '#ef4444', order: 6 }
+];
+
+export const initialPipelines: Pipeline[] = [
+  {
+    id: 'pipe-sales',
+    name: 'Pipeline Principal de Ventas',
+    description: 'Ciclo completo de prospección, demo y cierre de clientes',
+    isDefault: true,
+    stages: initialStages
+  },
+  {
+    id: 'pipe-high-ticket',
+    name: 'Pipeline Clientes High-Ticket ($3k - $10k)',
+    description: 'Embudos avanzados y consultoría corporativa personalizada',
+    isDefault: false,
+    stages: [
+      { id: 'ht-1', name: 'Postulación Recibida', color: '#6366f1', order: 1 },
+      { id: 'ht-2', name: 'Filtro de Cualificación IA', color: '#3b82f6', order: 2 },
+      { id: 'ht-3', name: 'Llamada de Estrategia Agendada', color: '#8b5cf6', order: 3 },
+      { id: 'ht-4', name: 'Propuesta de Alto Valor Presentada', color: '#f59e0b', order: 4 },
+      { id: 'ht-5', name: 'Contrato Firmado / Cobro Exitoso', color: '#10b981', order: 5 }
+    ]
+  },
+  {
+    id: 'pipe-support',
+    name: 'Pipeline Éxito & Onboarding de Clientes',
+    description: 'Acompañamiento post-venta y renovación',
+    isDefault: false,
+    stages: [
+      { id: 'ob-1', name: 'Nuevo Cliente Bienvenido', color: '#06b6d4', order: 1 },
+      { id: 'ob-2', name: 'Configuración de WhatsApp & IA Lista', color: '#3b82f6', order: 2 },
+      { id: 'ob-3', name: 'Capacitación del Equipo', color: '#a855f7', order: 3 },
+      { id: 'ob-4', name: 'Caso de Éxito / Renovación', color: '#10b981', order: 4 }
+    ]
+  }
 ];
 
 export const initialContacts: Contact[] = [

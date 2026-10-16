@@ -17,6 +17,7 @@ import {
 import { InstagramIcon as Instagram, FacebookIcon as Facebook } from './CustomIcons';
 import { Conversation, ConversationMessage, Contact } from '../types';
 import { api } from '../api';
+import { callRealAIProvider } from '../services/liveAiService';
 
 interface SocialInboxViewProps {
   conversations: Conversation[];
@@ -104,14 +105,19 @@ export const SocialInboxView: React.FC<SocialInboxViewProps> = ({
     if (!activeConversation) return;
     setDraftingAI(true);
     try {
-      const lastContactMsg = messages.filter(m => m.sender === 'contact').slice(-1)[0]?.text || 'Consulta general';
-      const res = await api.assistDraft(
-        'Redactar respuesta cordial, responder preguntas y ofrecer enlace para agendar llamada',
-        `Último mensaje del cliente: "${lastContactMsg}"`,
-        'persuasivo'
+      const historyItems = messages.slice(-5).map(m => ({ sender: m.sender, text: m.text }));
+      const aiSettings = await api.getAISettings();
+      const lastContactMsg = messages.filter(m => m.sender === 'contact').slice(-1)[0]?.text || 'Hola, deseo cotizar sus servicios.';
+
+      const res = await callRealAIProvider(
+        aiSettings,
+        `Redacta una respuesta comercial profesional y cordial para responder al cliente que dice: "${lastContactMsg}". Ofrece nuestro enlace oficial para agendar una llamada.`,
+        historyItems,
+        activeContact
       );
-      if (res && res.draft) {
-        setInputText(res.draft);
+
+      if (res && res.reply) {
+        setInputText(res.reply);
       }
     } catch (err) {
       console.error(err);
